@@ -50,12 +50,12 @@ def click_start(e):
     is_same = itm==conf['current']
     update_current(itm)
     if is_same: # if we click on the same item
-        print("Toggling")
+        #print("Toggling")
         startstop(e)
 
     else:
         # If we just clicked on "another" item
-        print("Launching!")
+        #print("Launching!")
         conf['audio']=None # eliminate whatever we were playing, so we can start afresh
         conf['playing']=True # for sure play!
 

@@ -20,3 +20,10 @@ PLAY <filename2>
 If you want to stop after playing some files use this:
 STOP
 ```
+
+
+# TODO
+- [ ] Show a monitor for how far within a file we are
+- [ ] Volume control
+
+
