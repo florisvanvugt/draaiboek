@@ -33,8 +33,16 @@ def update_progress_bar():
 
 
 def update_current(c):
+    """ Switch the currently active item in the schedule. """
     conf['listbox'].itemconfig(conf['current'],{'bg':'white','selectbackground':'gray'}) # "remove" previous selection
     conf['listbox'].itemconfig(c,{'bg':'lightgreen','selectbackground':'green'}) # set current selection
+
+    conf['listbox'].selection_clear(0, END)
+    conf['listbox'].selection_set(c)
+    conf['listbox'].activate(c)
+    conf['listbox'].focus()
+
+    
     conf['current']=c
 
     
