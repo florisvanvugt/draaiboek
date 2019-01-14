@@ -1,6 +1,6 @@
 This is a kind of very simple audio player, that works from a 'schedule' where you can set "stop" points (where playback will always stop) and add notes.
 
-Requirements `pip install audioread pyaudio`
+Requirements Python3, and `pip install audioread pyaudio`
 
 
 
