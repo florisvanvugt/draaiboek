@@ -4,6 +4,15 @@ Requirements `pip install audioread pyaudio`
 
 
 
+# Usage
+
+Launch the program, select a schedule file.
+
+Double click on a sound to play it, or use the space bar.
+Click on it again to stop it, or again use the space bar.
+
+
+
 # How to define the schedule
 
 The schedule is a simple text file that looks like this:
@@ -22,8 +31,13 @@ STOP
 ```
 
 
-# TODO
-- [ ] Show a monitor for how far within a file we are
-- [ ] Volume control
 
+
+# TODO
+- [x] Show a monitor for how far within a file we are
+- [ ] Volume control
+- [ ] When you pause and unpause a file, continue playing where it left off.
+- [x] Playing files with different framerate
+- [ ] Check going back and forth between files of different frame rates (sometimes you get some issues it seems)
+- [ ] <spacebar> continues after a STOP
 

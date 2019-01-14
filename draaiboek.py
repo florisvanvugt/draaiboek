@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import filedialog
+from tkinter import ttk
 import os
 
 
@@ -13,6 +14,22 @@ import pyaudio
 conf = {}
 conf['draaiboek']=[]
 
+
+
+
+
+# The resolution of the progress bar
+PROGRESS_RES = 500
+
+def update_progress_bar():
+    """ Update the progress bar to reflect how far we are in the current playback."""
+    if 'audio' not in conf or not conf['audio'] or 'nbuf' not in conf:
+        conf['progress']['value']=0
+        return
+    nleft = len(conf['audio']) # how many buffers are left
+    tot = conf['nbuf']
+    p = int( float(PROGRESS_RES)*(tot-nleft) / tot )
+    conf['progress']['value']=p
 
 
 def update_current(c):
@@ -73,15 +90,20 @@ def read_new_file():
     bufs = []
     with audioread.audio_open(filename) as f:
 
+        if conf['channels']!=f.channels or conf['samplerate']!=f.samplerate:
+            # we have to close and re-open the audio output, because otherwise we're playing at the wrong sampling rate
+            conf['restart.stream']=True
+            
         conf['channels']   =f.channels
         conf['samplerate'] =f.samplerate
-        conf['duration']   =f.duration
+        #conf['duration']   =f.duration
         # TODO: we'll probably want to make sure that these settings
         # match our pyaudio object.
         for buf in f:
             bufs.append(buf)
             
     conf['audio']=bufs
+    conf['nbuf']=len(bufs)
 
 
 
@@ -140,28 +162,49 @@ def get_duration(f):
 
 
 
-def init(f):
+def init(fname):
+
+    # Build the interface
     master = conf['master']
     master.title("Draaiboek")
     master.geometry('600x600')
 
+    master.style = ttk.Style()
+    master.style.theme_use("default")
 
     def on_closing():
         conf["active"]=False
     master.protocol("WM_DELETE_WINDOW", on_closing)
 
-    
-    scrollbar = Scrollbar(master)
+
+    f = Frame(master)
+    scrollbar = Scrollbar(f)
     scrollbar.pack( side = 'right', fill = 'both' )
 
-    listbox = Listbox(master, yscrollcommand=scrollbar.set)
+    listbox = Listbox(f, yscrollcommand=scrollbar.set)
     listbox.configure(font=('Times New Roman',18))
-    listbox.pack(side="left",fill="both", expand=True)
+    listbox.pack(side="top",fill="both", expand=True)
     scrollbar.config( command = listbox.yview )
     listbox.bind('<Double-1>', click_start)
+    f.pack(side='top',fill='both',expand=True)
+
+
+    f = Frame(master)
+    f.pack(side='bottom',fill=X)
+
+    statusv = StringVar()
+    statusv.set('Ready')
+    w = Label(f, textvariable=statusv)
+    w.pack(side='right',expand=False)
+    conf['status']=statusv
+
+    progress = ttk.Progressbar(f, orient=HORIZONTAL,
+                               maximum=PROGRESS_RES,
+                               mode='determinate')
+    progress.pack(side='left',expand=True,fill=X)
 
     # Read the "program" that we are supposed to do (the draaiboek)
-    with open(f) as f:
+    with open(fname) as f:
         program = [ p.strip() for p in f.readlines() ]
 
     draaiboek = []
@@ -189,12 +232,21 @@ def init(f):
             props['fg']='red'
             listbox.itemconfig(i, props)
         if schedule["type"]=="MSG":
-            listbox.insert(END,"  "+schedule["content"])
+            cont = schedule['content']
+            if cont.endswith('.m4a'):
+                cont = cont[:-4]
+            listbox.insert(END,"  "+cont)
             props['fg']='black'
+            if schedule["content"].startswith('#'):
+                props['fg']='gray'
             listbox.itemconfig(i, props)
+
+
+    conf['master'].bind("<space>", click_start)
 
     conf['listbox']=listbox
     conf['draaiboek']=draaiboek
+    conf['progress']=progress
     conf['master']=master
 
             
@@ -204,6 +256,12 @@ def init(f):
 def ensure_stream():
     # Make sure the stream is open
 
+    if 'restart.stream' in conf and conf['restart.stream']:
+        print("Restarting stream because requested to do so. Probably because we start playing a file with different stream parameters.")
+        close_stream()
+        conf['restart.stream']=False
+    
+    
     if not 'stream' in conf or not conf['stream']:
 
         # open stream based on the wave object which has been input.
@@ -216,10 +274,13 @@ def ensure_stream():
         
 
 def close_stream():
-    if 'stream' in conf:
+    if 'stream' in conf and conf['stream']:
         conf['stream'].close()
     
 
+
+
+        
 conf['master'] = Tk()
 fn = filedialog.askopenfilename()
 if not fn or not len(fn):
@@ -231,17 +292,19 @@ if not fn or not len(fn):
 # create an audio object
 conf['p'] = pyaudio.PyAudio()
 
-    
+
+# initialise the interface
 init(fn)
 
 
-conf['master'].bind("<space>", click_start)
     
     
 
 conf['active']  = True # whether we keep the window open
 conf['playing'] = False # whether we are currently playing something
 conf['current'] = 0 # the current item we are playing
+conf['channels']   = 0 
+conf['samplerate'] = 0
 while conf["active"]:
     time.sleep(.001)
 
@@ -276,8 +339,22 @@ while conf["active"]:
     if conf['playing']: # if we're still in business
         ensure_stream() # ensure that we have a stream open
         # Actually play
-        buf = conf['audio'].pop(0) # take the buffer
-        conf['stream'].write(buf) # blocking!
+        if conf['stream']:# and conf['stream'].is_active():
+            buf = conf['audio'].pop(0) # take the buffer
+            try:
+                conf['stream'].write(buf) # blocking!
+            except:
+                print("## Problem writing to stream!")
+                #print(e)
+        else:
+            print("## WARNING: trying to play but the stream is not open!")
+
+        update_progress_bar()
+
+
+    status = 'Playing' if conf['playing'] else 'Ready'
+    conf['status'].set(status)
+    
     
     conf['master'].update_idletasks()
     conf['master'].update()
