@@ -75,14 +75,21 @@ def click_start(e):
     is_same = itm==conf['current']
     update_current(itm)
     if is_same: # if we click on the same item
-        #print("Toggling")
-        startstop(e)
+
+        if conf['draaiboek'][itm]['type']=='PLAY':
+            #print("Toggling")
+            startstop(e)
+
+        elif conf['draaiboek'][itm]['type']=='STOP': # if this is on a "stop" point, let's go on...
+            next_schedule()
+            conf['audio']=None
+            startstop(e)
 
     else:
         # If we just clicked on "another" item
         #print("Launching!")
-        conf['audio']=None # eliminate whatever we were playing, so we can start afresh
-        conf['playing']=True # for sure play!
+        conf['audio']   = None # eliminate whatever we were playing, so we can start afresh
+        conf['playing'] = True # for sure play!
 
 
 
@@ -120,22 +127,25 @@ def mark_completed():
     cur = conf['draaiboek'][c]
     cur['played']=True
 
-    lb = conf['listbox']
-    lb.delete(c)
-    lb.insert(c,formulate_filename(cur))
+    if cur['type']=='PLAY':
+        # Update in the list box
+        lb = conf['listbox']
+        lb.delete(c)
+        lb.insert(c,formulate_filename(cur))
     
 
 
 
 def stop_playing():
     print("Stopping playback")
+    conf['status'].set('Stopped')
     if 'stream' in conf and conf['stream']:
         conf['playing']=False
         s = conf['stream']
         s.stop_stream()
         s.close()
     conf['stream']=None
-    conf['audio']=None # also discard the audio
+    #conf['audio']=None # also discard the audio
     
 
     
@@ -268,10 +278,12 @@ def ensure_stream():
         print("Restarting stream because requested to do so. Probably because we start playing a file with different stream parameters.")
         close_stream()
         conf['restart.stream']=False
+        conf['stream']=None
     
     
     if not 'stream' in conf or not conf['stream']:
 
+        print("Opening stream...")
         # open stream based on the wave object which has been input.
         stream = conf['p'].open(format   = pyaudio.paInt16, # according to audioread, this is the format we get the data in
                                 channels = conf['channels'],
@@ -336,10 +348,9 @@ while conf["active"]:
             stop_playing()
             conf['playing']=False
 
-    if conf['playing']:
-        if do_read:
-            read_new_file()
-
+        if conf['playing']: # If we're still playing by now...
+            if do_read:
+                read_new_file()
         
 
             
@@ -352,10 +363,13 @@ while conf["active"]:
             try:
                 conf['stream'].write(buf) # blocking!
             except:
-                print("## Problem writing to stream!")
+                if 'had.problem' not in conf or not conf['had.problem']:
+                    print("## Problem writing to stream!")
+                conf['had.problem']=True
                 #print(e)
         else:
             print("## WARNING: trying to play but the stream is not open!")
+            conf['had.problem']=False
 
         update_progress_bar()
 

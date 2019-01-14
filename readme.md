@@ -36,8 +36,8 @@ STOP
 # TODO
 - [x] Show a monitor for how far within a file we are
 - [ ] Volume control
-- [ ] When you pause and unpause a file, continue playing where it left off.
+- [x] When you pause and unpause a file, continue playing where it left off.
 - [x] Playing files with different framerate
-- [ ] Check going back and forth between files of different frame rates (sometimes you get some issues it seems)
-- [ ] <spacebar> continues after a STOP
+- [x] Check going back and forth between files of different frame rates (sometimes you get some issues it seems)
+- [x] <spacebar> continues after a STOP
 
