@@ -267,8 +267,36 @@ def init(fname):
     conf['progress']=progress
     conf['master']=master
 
-            
 
+
+import struct
+
+def silence(n):
+    """ Return silence of the given number of frames """
+    return struct.pack('i',0)*n
+
+
+
+def callback(in_data, frame_count, time_info, status):
+    # This is when the sound card tells us it wants to play something
+    
+    if 'stream' in conf and conf['stream'] and 'audio' in conf and conf['audio']:# and conf['stream'].is_active():
+        
+        buf = conf['audio'].pop(0) # take the buffer
+        #try:
+            #conf['stream'].write(buf) # blocking!
+        return (buf,pyaudio.paContinue)
+        #except:
+        #    if 'had.problem' not in conf or not conf['had.problem']:
+        #        print("## Problem writing to stream!")
+        #        conf['had.problem']=True
+        #        #print(e)
+        #else:
+        #    print("## WARNING: trying to play but the stream is not open!")
+        #    conf['had.problem']=False
+    else:
+        return (silence(frame_count),pyaudio.paContinue)
+            
 
 
 def ensure_stream():
@@ -288,8 +316,12 @@ def ensure_stream():
         stream = conf['p'].open(format   = pyaudio.paInt16, # according to audioread, this is the format we get the data in
                                 channels = conf['channels'],
                                 rate     = conf['samplerate'],
-                                output   = True)
+                                output   = True,
+                                stream_callback=callback)
         conf['stream']=stream
+        #silence = struct.pack('%dd[0]*2*conf['samplerate']
+        #conf['stream'].write(silence) # write some silence
+        #time.sleep(1)
 
         
 
@@ -357,20 +389,6 @@ while conf["active"]:
 
     if conf['playing']: # if we're still in business
         ensure_stream() # ensure that we have a stream open
-        # Actually play
-        if conf['stream']:# and conf['stream'].is_active():
-            buf = conf['audio'].pop(0) # take the buffer
-            try:
-                conf['stream'].write(buf) # blocking!
-            except:
-                if 'had.problem' not in conf or not conf['had.problem']:
-                    print("## Problem writing to stream!")
-                conf['had.problem']=True
-                #print(e)
-        else:
-            print("## WARNING: trying to play but the stream is not open!")
-            conf['had.problem']=False
-
         update_progress_bar()
 
 
